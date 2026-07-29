@@ -1,4 +1,4 @@
-// Mobile menu toggle
+// Mobile menu toggle + lead form submission
 document.addEventListener('DOMContentLoaded', function () {
   const toggle = document.querySelector('.mobile-toggle');
   const nav = document.querySelector('.nav');
@@ -10,48 +10,61 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Simple form handler (client-side success for now)
-  // Replace with Formspree, Netlify Forms, or your preferred endpoint later
+  // Lead form → /api/lead (sends email to jason@fiberfirstsolutions.com)
   const form = document.getElementById('lead-form');
   const success = document.getElementById('form-success');
+  const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
 
   if (form) {
-    form.addEventListener('submit', function (e) {
+    form.addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      // Collect data (you can send this to your email service or CRM)
-      const data = {
-        name: form.name.value,
-        company: form.company.value,
-        email: form.email.value,
-        phone: form.phone.value,
-        need: form.need.value,
-        message: form.message.value,
-        source: 'fiberfirstsolutions.com',
-        timestamp: new Date().toISOString()
-      };
-
-      console.log('Lead submitted:', data);
-
-      // For production: send to Formspree, Make.com, Zapier, or your backend
-      // Example Formspree (replace YOUR_FORM_ID):
-      // fetch('https://formspree.io/f/YOUR_FORM_ID', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(data)
-      // });
-
-      // Show success state
-      form.hidden = true;
-      if (success) {
-        success.hidden = false;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending…';
       }
 
-      // Optional: reset after a few seconds or keep success visible
+      const data = {
+        name: form.name.value.trim(),
+        company: form.company.value.trim(),
+        email: form.email.value.trim(),
+        phone: form.phone.value.trim(),
+        need: form.need.value,
+        message: form.message.value.trim(),
+        // honeypot
+        website: form.website ? form.website.value : ''
+      };
+
+      try {
+        const res = await fetch('/api/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(result.error || 'Something went wrong. Please try again.');
+        }
+
+        // Success
+        form.hidden = true;
+        if (success) {
+          success.hidden = false;
+        }
+      } catch (err) {
+        console.error(err);
+        alert(err.message || 'Failed to send. Please email jason@fiberfirstsolutions.com directly.');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Request Free Quotes';
+        }
+      }
     });
   }
 
-  // Smooth close mobile nav on link click
+  // Close mobile nav on link click
   document.querySelectorAll('.nav a').forEach(link => {
     link.addEventListener('click', () => {
       if (nav) nav.classList.remove('open');
@@ -60,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 
-// Add open styles for mobile nav via JS-added class (or add to CSS)
+// Mobile nav styles
 const style = document.createElement('style');
 style.textContent = `
   @media (max-width: 768px) {
